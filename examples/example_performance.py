@@ -30,6 +30,9 @@ vmax_api = pyvmax.connect(URL, USER, PASSWORD)
 def time_now():
     return int(time.time() * 1000)
 
+def time_minutes_ago(minutes=1):
+    return int(time_now() - (minutes * 60 * 1000))
+
 def time_hours_ago(hours=1):
     return int(time_now() - (hours * 3600 * 1000))
 
@@ -48,7 +51,7 @@ def time_midnights_ago(midnights=1):
 
 def generate_payload(symmetrix_id):
     return {
-        "startDate": time_hours_ago(1),     # 60 minutes ago
+        "startDate": time_minutes_ago(10),     # 60 minutes ago
         "endDate": time_now(),              # now
         "symmetrixId": symmetrix_id,
         "dataFormat": "Average",

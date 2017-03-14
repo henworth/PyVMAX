@@ -38,14 +38,14 @@ print(vmax_api.rest.json_to_str(vmax_api.get_version()))
 log.warning(str(vmax_api.api_last_resp_time) + "ms API response time")
 
 # discover the known symmetrix serial #'s
-prov_array_ids = vmax_api.get_prov_arrays()['symmetrixId']
+prov_array_ids = vmax_api.get_arrays()['symmetrixId']
 log.info(str(vmax_api.api_last_resp_time) + "ms API response time")
 
 # going to build a list of dicts, each one a symmetrix
 prov_array_list = list()
 for symmId in prov_array_ids:
     # get the array details
-    symm_result = vmax_api.get_prov_array(symmId)
+    symm_result = vmax_api.get_array(symmId)
     if 'symmetrix' in symm_result:
         symmetrix = symm_result['symmetrix'][0]
 
