@@ -1,5 +1,6 @@
 import logging
 
+
 def logger_setup():
     """
     setup the style and defults of the python logger
@@ -28,6 +29,7 @@ def logger_setup():
     # calm down the chatty requests module
     logging.getLogger("requests").setLevel(logging.WARNING)
 
+
 def get_logger(log_name):
     """
     creates a new logger object with a customized label
@@ -40,5 +42,3 @@ def get_logger(log_name):
 
     """
     return logging.getLogger(log_name)
-
-

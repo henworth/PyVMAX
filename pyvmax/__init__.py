@@ -32,12 +32,12 @@ def connect(url, username, password):
     rest_client = Restful(url, username, password)
     target_uri = "%s/univmax/restapi/system/version" % (url)
     version_response = rest_client.get(target_uri)
-    if 'version' in version_response:
-        univmax_version = version_response.get('version', '')
+    if "version" in version_response:
+        univmax_version = version_response.get("version", "")
     else:
-        log.debug('Incorrect version response')
+        log.debug("Incorrect version response")
 
-# import the correct API module for the version of Unisphere discovered
+    # Import the correct API module for the version of Unisphere discovered
     version_major = ""
     version_minor = ""
     if '.' in univmax_version:
@@ -57,4 +57,4 @@ def connect(url, username, password):
 
     return VmaxApi(rest_client, url)
 
-__all__ = ['connect']
+__all__ = ["connect"]
