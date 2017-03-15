@@ -1,6 +1,7 @@
-import requests
 import json
 import logging
+import requests
+from requests.auth import HTTPBasicAuth
 
 # Disable warnings from untrusted server certificates
 try:
@@ -22,15 +23,10 @@ class Restful:
     """
     def __init__(self, base_url, username, password, verify_ssl=False):
         self.url = base_url
-        self.user = username
-        self.password = password
-        self.verify_ssl = verifySSL
-
-        # set the headers for how we want the response
-        self.headers = {'content-type': 'application/json', 'accept':'application/json'}
-
-        self.log = logging.getLogger('pyvmax')
-        self.log.debug('Setting up Restful')
+        self.auth = HTTPBasicAuth(username, password)
+        self.verify_ssl = verify_ssl
+        self.log = logging.getLogger("pyvmax")
+        self.log.debug("Setting up Restful")
 
     def set_url(self, new_url):
         self.url = new_url
@@ -45,6 +41,36 @@ class Restful:
         """
         return str(json.dumps(json_obj, sort_keys=False, indent=2))
 
+    def __request_helper(self, target_url, method="GET", params=None, data=None):
+        try:
+            request = requests.request(
+                method,
+                target_url,
+                headers={"content-type": "application/json", "accept": "application/json"},
+                auth=self.auth,
+                verify=self.verify_ssl,
+                params=params,
+                data=json.dumps(data)
+            )
+        except requests.exceptions.RequestException:
+            self.log.critical("Can't {} to API server URL: {}".format(method, target_url))
+            self.log.critical("Exiting {}".format(method))
+            exit(1)
+        try:
+            response = request.json()
+        except Exception:
+            self.log.warning("API {} did not return JSON response".format(method))
+            self.log.warning(response.text)
+            response = dict()
+
+        # This is a VMAX API peculiarity, that "message" in the JSON means
+        # the server is having issues, and the response can't be well made
+        if "message" in response:
+            self.log.warning("API call {}: server only responded with:".format(target_url))
+            self.log.warning(request.json())
+            response = dict()
+        return response
+
     def get(self, target_url, payload=None):
         """Make the REST GET call to the public api
 
@@ -54,41 +80,7 @@ class Restful:
         Returns:
             dict:  could be empty
         """
-
-        try:
-            if payload == None:
-                response = requests.get(target_url,
-                                        auth=(self.user, self.password),
-                                        headers=self.headers,
-                                        verify=self.verify_ssl)
-            else: # payload is something
-                response = requests.get(target_url,
-                                        params=json.dumps(payload),
-                                        auth=(self.user, self.password),
-                                        headers=self.headers,
-                                        verify=self.verify_ssl)
-
-        except Exception:
-            self.log.critical("Can't GET to API server URL:  " + target_url)
-            self.log.critical("Exiting get")
-            exit(1)
-
-        #take the raw response text and deserialize it into a python object.
-        try:
-            response_object = json.loads(response.text)
-        except Exception:
-            self.log.warning("API GET did not return JSON response")
-            self.log.warning(response.text)
-            return dict()
-
-        # this is a VMAX API peculiarity, that 'message' in the JSON means
-        # the server is having issues, and the response can't be well made
-        if 'message' in response_object:
-            self.log.warning("API call" + target_url + " : server only responded with:")
-            self.log.warning(self.json_to_str(response_object))
-            response_object = dict()
-
-        return response_object
+        return self.__request_helper(target_url, method="GET", params=payload)
 
     def post(self, target_url, request_object=None):
         """Make the REST POST call to the public api
@@ -99,31 +91,7 @@ class Restful:
         Returns:
             dict:  could be empty
         """
-
-        #make the actual request, specifying the URL, the JSON from above,
-        #standard basic auth, the headers and not to verify the SSL cert.
-        try:
-            response = requests.post(target_url,
-                                     data=json.dumps(request_object),
-                                     auth=(self.user, self.password),
-                                     headers=self.headers,
-                                     verify=self.verify_ssl)
-
-            #take the raw response text and deserialize it into a python object.
-            try:
-                response_object = json.loads(response.text)
-            except Exception:
-                self.log.warning("API POST did not return JSON response")
-                self.log.warning(response.text)
-                return dict()
-        except Exception:
-            self.log.critical("Exception:  Can't POST to API server URL:  " + target_url)
-            self.log.critical(self.json_to_strn(request_object))
-            self.log.critical("Exiting POST")
-            exit(1)
-
-        return response_object
-
+        return self.__request_helper(target_url, method="POST", params=request_object)
 
     def put(self, target_url, request_object=None):
         """Make the REST PUT call to the public api
@@ -134,33 +102,7 @@ class Restful:
         Returns:
             dict:  could be empty
         """
-
-        #turn this into a JSON string
-        request_json = json.dumps(request_object, sort_keys=True, indent=4)
-
-        #make the actual request, specifying the URL, the JSON from above,
-        #standard basic auth, the headers and not to verify the SSL cert.
-        try:
-            response = requests.put(target_url,
-                                    request_json,
-                                    auth=(self.user, self.password),
-                                    headers=self.headers,
-                                    verify=self.verify_ssl)
-        except Exception:
-            self.log.critical("Exception:  Can't PUT to API server URL:  " + target_url)
-            self.log.critical(self.json_to_str(request_object))
-            self.log.critical("Exiting PUT")
-            exit(1)
-
-        #take the raw response text and deserialize it into a python object.
-        try:
-            response = json.loads(response.text)
-        except Exception:
-            self.log.warning("API PUT did not return JSON response")
-            self.log.warning(response.text)
-            return dict()
-        return response
-
+        return self.__request_helper(target_url, method="PUT", params=request_object)
 
     def delete(self, target_url, request_object=None):
         """Make the REST DELETE call to the public api
@@ -171,31 +113,4 @@ class Restful:
         Returns:
             dict:  could be empty
         """
-
-        #turn this into a JSON string
-        request_json = json.dumps(request_object, sort_keys=True, indent=4)
-
-        #make the actual request, specifying the URL, the JSON from above,
-        #standard basic auth, the headers and not to verify the SSL cert.
-        try:
-            response = requests.delete(target_url,
-                                       request_json,
-                                       auth=(self.user, self.password),
-                                       headers=self.headers,
-                                       verify=self.verify_ssl)
-        except Exception:
-            self.log.critical("Exception:  Can't DELETE to API server URL:  " + target_url)
-            self.log.critical(self.json_to_str(request_object))
-            self.log.critical("Exiting DELETE")
-            exit(1)
-
-        #take the raw response text and deserialize it into a python object.
-        try:
-            response = json.loads(response.text)
-        except Exception:
-            self.log.warning("API DELETE did not return JSON response")
-            self.log.warning(response.text)
-            return dict()
-        return response
-
-
+        return self.__request_helper(target_url, method="DELETE", params=request_object)
